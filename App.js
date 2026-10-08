@@ -1,13 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { StyleSheet, Text, View, TouchableOpacity, SafeAreaView } from 'react-native';
-import NfcManager, { NfcTech, Ndef } from 'react-native-nfc-manager';
+import NfcManager, { NfcTech } from 'react-native-nfc-manager';
 
 export default function App() {
   const [tagData, setTagData] = useState('Presiona el botón para escanear');
   const [hilera, setHilera] = useState(71);
 
   useEffect(() => {
-    // Inicializar el lector NFC al abrir la app
     NfcManager.start().catch(() => {
       console.warn('NFC no soportado');
     });
@@ -15,23 +14,27 @@ export default function App() {
 
   async function readNfc() {
     try {
-      setTagData('Leyendo pulsera... Acerque el dispositivo');
-      // Activar la tecnología NDEF para leer texto
+      setTagData('Leyendo pulsera... Acerque la pulsera');
       await NfcManager.requestTechnology(NfcTech.Ndef);
       const tag = await NfcManager.getTag();
       
       if (tag && tag.ndefMessage && tag.ndefMessage.length > 0) {
-        const bytePayload = tag.ndefMessage[0].payload;
-        const text = Ndef.text.decodePayload(bytePayload);
+        const payload = tag.ndefMessage[0].payload;
+        
+        // Decodificación manual robusta para extraer el texto de la pulsera
+        const status = payload[0];
+        const langCodeLen = status & 0x3f;
+        const textBytes = payload.slice(1 + langCodeLen);
+        const text = textBytes.map(b => String.fromCharCode(b)).join('');
+        
         setTagData(`Personal leído:\n${text}`);
       } else {
-        setTagData('Tarjeta detectada pero sin formato de texto');
+        setTagData('Pulsera detectada pero sin datos leíbles');
       }
     } catch (ex) {
       console.warn(ex);
       setTagData('Lectura cancelada o error al escanear');
     } finally {
-      // Apagar el modo de lectura al terminar
       NfcManager.cancelTechnologyRequest();
     }
   }
@@ -86,4 +89,3 @@ const styles = StyleSheet.create({
   resultBox: { backgroundColor: '#fff', padding: 20, borderRadius: 15, width: '100%', alignItems: 'center', elevation: 2, borderWidth: 1, borderColor: '#ddd' },
   resultText: { fontSize: 16, color: '#333', textAlign: 'center', fontWeight: '500', lineHeight: 22 }
 });
-    
