@@ -1,12 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { StyleSheet, Text, View, TouchableOpacity, SafeAreaView, ScrollView } from 'react-native';
+import { StyleSheet, Text, View, TouchableOpacity, SafeAreaView, ScrollView, Alert } from 'react-native';
 import NfcManager, { NfcTech } from 'react-native-nfc-manager';
 
 export default function App() {
   const [tagData, setTagData] = useState('Presiona el botón para escanear');
-  const [hilera, setHilera] = useState(73);
-  
-  // NUEVO: Esta es la "memoria" que guardará la lista de personal escaneado
+  const [hilera, setHilera] = useState(75);
   const [registros, setRegistros] = useState([]); 
 
   useEffect(() => {
@@ -30,21 +28,18 @@ export default function App() {
         
         setTagData('¡Lectura exitosa!');
 
-        // Separar los datos que vienen con formato DNI@NOMBRE@...
         const partes = text.split('@');
         const dni = partes[0] || 'Sin DNI';
         const nombre = partes[1] || text; 
 
-        // Crear el nuevo registro con los datos extraídos
         const nuevoRegistro = {
           id: Date.now().toString(),
           dni: dni,
           nombre: nombre,
-          hilera: hilera, // Guarda la hilera en la que estaba al momento de escanear
-          hora: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) // Guarda la hora exacta
+          hilera: hilera,
+          hora: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
         };
 
-        // Guardar el nuevo registro al principio de la lista
         setRegistros(listaAnterior => [nuevoRegistro, ...listaAnterior]);
 
       } else {
@@ -57,6 +52,24 @@ export default function App() {
       NfcManager.cancelTechnologyRequest();
     }
   }
+
+  // NUEVO: Función para confirmar y eliminar un registro
+  const confirmarEliminar = (id, nombre) => {
+    Alert.alert(
+      "Eliminar registro",
+      `¿Estás seguro de eliminar a ${nombre} de la lista?`,
+      [
+        { text: "Cancelar", style: "cancel" },
+        { 
+          text: "Eliminar", 
+          style: "destructive",
+          onPress: () => {
+            setRegistros(listaAnterior => listaAnterior.filter(item => item.id !== id));
+          }
+        }
+      ]
+    );
+  };
 
   return (
     <SafeAreaView style={styles.container}>
@@ -88,7 +101,6 @@ export default function App() {
         </View>
       </View>
 
-      {/* NUEVO: Interfaz para mostrar la lista de registros guardados */}
       <View style={styles.listSection}>
         <Text style={styles.listTitle}>Personal Guardado ({registros.length})</Text>
         <ScrollView style={styles.listContainer}>
@@ -97,8 +109,16 @@ export default function App() {
               <View style={styles.itemInfo}>
                 <Text style={styles.itemName}>{item.nombre}</Text>
                 <Text style={styles.itemDetails}>DNI: {item.dni} • Hilera: {item.hilera}</Text>
+                <Text style={styles.itemTime}>{item.hora}</Text>
               </View>
-              <Text style={styles.itemTime}>{item.hora}</Text>
+              
+              {/* NUEVO: Botón de eliminar */}
+              <TouchableOpacity 
+                style={styles.deleteBtn} 
+                onPress={() => confirmarEliminar(item.id, item.nombre)}
+              >
+                <Text style={styles.deleteBtnText}>❌</Text>
+              </TouchableOpacity>
             </View>
           ))}
         </ScrollView>
@@ -123,15 +143,16 @@ const styles = StyleSheet.create({
   scanButtonText: { color: '#fff', fontSize: 16, fontWeight: 'bold' },
   resultBox: { backgroundColor: '#fff', padding: 12, borderRadius: 10, width: '100%', alignItems: 'center', elevation: 1, borderWidth: 1, borderColor: '#ddd' },
   resultText: { fontSize: 14, color: '#333', textAlign: 'center', fontWeight: '500' },
-  
-  /* ESTILOS DE LA NUEVA LISTA */
   listSection: { flex: 1, marginTop: 10 },
   listTitle: { fontSize: 18, fontWeight: 'bold', color: '#2e7d32', marginBottom: 10 },
   listContainer: { flex: 1 },
+  
+  /* ESTILOS ACTUALIZADOS PARA EL BOTÓN ELIMINAR */
   listItem: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#fff', padding: 15, borderRadius: 10, marginBottom: 10, elevation: 1, borderWidth: 1, borderColor: '#eee' },
   itemInfo: { flex: 1, paddingRight: 10 },
   itemName: { fontSize: 15, fontWeight: 'bold', color: '#333' },
-  itemDetails: { fontSize: 13, color: '#666', marginTop: 4 },
-  itemTime: { fontSize: 13, color: '#999', fontWeight: 'bold' }
+  itemDetails: { fontSize: 13, color: '#666', marginTop: 4, marginBottom: 2 },
+  itemTime: { fontSize: 12, color: '#999', fontWeight: 'bold' },
+  deleteBtn: { padding: 10, backgroundColor: '#ffebee', borderRadius: 8 },
+  deleteBtnText: { fontSize: 16 }
 });
-        
