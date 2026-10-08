@@ -1,0 +1,26 @@
+{
+  "expo": {
+    "name": "Supervisor Cosecha",
+    "slug": "supervisor-cosecha",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "https://expo.dev/favicon.ico",
+    "userInterfaceStyle": "light",
+    "android": {
+      "package": "com.mikel.supervisorcosecha",
+      "permissions": [
+        "NFC"
+      ]
+    },
+    "sdkVersion": "51.0.0",
+    "platforms": [
+      "ios",
+      "android"
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "5ff098a3-99e2-48ba-92e8-983f9a934fb2"
+      }
+    }
+  }
+}
