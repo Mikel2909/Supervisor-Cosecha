@@ -5,7 +5,7 @@
     "owner": "mikel29s-team",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "https://expo.dev/favicon.ico",
+    "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
     "android": {
       "package": "com.mikel.supervisorcosecha",
