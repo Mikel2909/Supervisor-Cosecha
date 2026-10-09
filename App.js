@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { StyleSheet, Text, View, TouchableOpacity, SafeAreaView, ScrollView, Alert } from 'react-native';
 import NfcManager, { NfcTech } from 'react-native-nfc-manager';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export default function App() {
   const [tagData, setTagData] = useState('Presiona el botón para escanear');
@@ -8,10 +9,31 @@ export default function App() {
   const [registros, setRegistros] = useState([]); 
 
   useEffect(() => {
-    NfcManager.start().catch(() => {
-      console.warn('NFC no soportado');
-    });
+    // Inicializar NFC y cargar datos guardados en la memoria del celular al abrir la app
+    NfcManager.start().catch(() => console.warn('NFC no soportado'));
+    cargarDatosGuardados();
   }, []);
+
+  // Cargar datos almacenados en el disco del teléfono
+  const cargarDatosGuardados = async () => {
+    try {
+      const datosGuardados = await AsyncStorage.getItem('@registros_cosecha');
+      if (datosGuardados !== null) {
+        setRegistros(JSON.parse(datosGuardados));
+      }
+    } catch (e) {
+      console.warn('Error al cargar datos guardados', e);
+    }
+  };
+
+  // Guardar datos en el disco del teléfono
+  const guardarDatos = async (nuevaLista) => {
+    try {
+      await AsyncStorage.setItem('@registros_cosecha', JSON.stringify(nuevaLista));
+    } catch (e) {
+      console.warn('Error al guardar en memoria', e);
+    }
+  };
 
   async function readNfc() {
     try {
@@ -40,7 +62,11 @@ export default function App() {
           hora: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
         };
 
-        setRegistros(listaAnterior => [nuevoRegistro, ...listaAnterior]);
+        setRegistros(listaAnterior => {
+          const listaActualizada = [nuevoRegistro, ...listaAnterior];
+          guardarDatos(listaActualizada); // Auto-guardado inmediato
+          return listaActualizada;
+        });
 
       } else {
         setTagData('Pulsera detectada pero sin datos leíbles');
@@ -53,7 +79,6 @@ export default function App() {
     }
   }
 
-  // NUEVO: Función para confirmar y eliminar un registro
   const confirmarEliminar = (id, nombre) => {
     Alert.alert(
       "Eliminar registro",
@@ -64,7 +89,29 @@ export default function App() {
           text: "Eliminar", 
           style: "destructive",
           onPress: () => {
-            setRegistros(listaAnterior => listaAnterior.filter(item => item.id !== id));
+            setRegistros(listaAnterior => {
+              const listaActualizada = listaAnterior.filter(item => item.id !== id);
+              guardarDatos(listaActualizada); // Auto-guardado tras eliminar
+              return listaActualizada;
+            });
+          }
+        }
+      ]
+    );
+  };
+
+  const confirmarBorrarTodo = () => {
+    Alert.alert(
+      "Nueva Jornada / Borrar Todo",
+      "¿Deseas borrar toda la lista guardada para iniciar un nuevo día de cosecha?",
+      [
+        { text: "Cancelar", style: "cancel" },
+        { 
+          text: "Sí, borrar todo", 
+          style: "destructive",
+          onPress: () => {
+            setRegistros([]);
+            guardarDatos([]);
           }
         }
       ]
@@ -102,7 +149,15 @@ export default function App() {
       </View>
 
       <View style={styles.listSection}>
-        <Text style={styles.listTitle}>Personal Guardado ({registros.length})</Text>
+        <View style={styles.listHeaderRow}>
+          <Text style={styles.listTitle}>Personal Guardado ({registros.length})</Text>
+          {registros.length > 0 && (
+            <TouchableOpacity onPress={confirmarBorrarTodo} style={styles.resetBtn}>
+              <Text style={styles.resetBtnText}>🗑️ Nueva Cosecha</Text>
+            </TouchableOpacity>
+          )}
+        </View>
+
         <ScrollView style={styles.listContainer}>
           {registros.map((item) => (
             <View key={item.id} style={styles.listItem}>
@@ -112,7 +167,6 @@ export default function App() {
                 <Text style={styles.itemTime}>{item.hora}</Text>
               </View>
               
-              {/* NUEVO: Botón de eliminar */}
               <TouchableOpacity 
                 style={styles.deleteBtn} 
                 onPress={() => confirmarEliminar(item.id, item.nombre)}
@@ -144,10 +198,11 @@ const styles = StyleSheet.create({
   resultBox: { backgroundColor: '#fff', padding: 12, borderRadius: 10, width: '100%', alignItems: 'center', elevation: 1, borderWidth: 1, borderColor: '#ddd' },
   resultText: { fontSize: 14, color: '#333', textAlign: 'center', fontWeight: '500' },
   listSection: { flex: 1, marginTop: 10 },
-  listTitle: { fontSize: 18, fontWeight: 'bold', color: '#2e7d32', marginBottom: 10 },
+  listHeaderRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 },
+  listTitle: { fontSize: 18, fontWeight: 'bold', color: '#2e7d32' },
+  resetBtn: { backgroundColor: '#fff3e0', paddingVertical: 6, paddingHorizontal: 10, borderRadius: 8, borderWidth: 1, borderColor: '#ffe0b2' },
+  resetBtnText: { fontSize: 12, color: '#e65100', fontWeight: 'bold' },
   listContainer: { flex: 1 },
-  
-  /* ESTILOS ACTUALIZADOS PARA EL BOTÓN ELIMINAR */
   listItem: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#fff', padding: 15, borderRadius: 10, marginBottom: 10, elevation: 1, borderWidth: 1, borderColor: '#eee' },
   itemInfo: { flex: 1, paddingRight: 10 },
   itemName: { fontSize: 15, fontWeight: 'bold', color: '#333' },
@@ -156,3 +211,4 @@ const styles = StyleSheet.create({
   deleteBtn: { padding: 10, backgroundColor: '#ffebee', borderRadius: 8 },
   deleteBtnText: { fontSize: 16 }
 });
+          
